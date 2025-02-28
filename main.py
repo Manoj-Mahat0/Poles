@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from typing import Dict, Optional
 
 # Load environment variables (Replace with actual values or set them in Vercel)
-MONGO_URI = os.getenv("MONGO_URI", "your-mongo-uri-here")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://Manoj:mcpyR6dp3UMKydQo@pole.1qyxr.mongodb.net/?retryWrites=true&w=majority&appName=Pole")
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
 
 # Initialize FastAPI app
