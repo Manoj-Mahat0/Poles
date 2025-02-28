@@ -1,39 +1,44 @@
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, Header, Cookie
 from pydantic import BaseModel
 from pymongo import MongoClient
-import jwt, datetime, asyncio
-from typing import Dict, Optional
+import jwt, datetime, asyncio, os
 from fastapi.middleware.cors import CORSMiddleware
 from passlib.context import CryptContext
+from typing import Dict, Optional
 
-# FastAPI app instance
+# Load environment variables (Replace with actual values or set them in Vercel)
+MONGO_URI = os.getenv("MONGO_URI", "your-mongo-uri-here")
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
+
+# Initialize FastAPI app
 app = FastAPI()
 
-# CORS Configuration
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this to restrict access
+    allow_origins=["*"],  # Adjust this for security
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# MongoDB setup (Replace with your actual credentials)
-MONGO_URI = "mongodb+srv://Manoj:mcpyR6dp3UMKydQo@pole.1qyxr.mongodb.net/?retryWrites=true&w=majority&appName=Pole"
+# MongoDB Setup
 client = MongoClient(MONGO_URI)
 db = client["pole_management"]
 users_collection = db["users"]
 poles_collection = db["poles"]
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = "your_secret_key"
+# Create indexes for fast lookups
+users_collection.create_index("username", unique=True)
+poles_collection.create_index("pole_id", unique=True)
 
-# In-memory pole state
-poles: Dict[int, Dict] = {}
+# Password hashing setup
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Async Lock for Pole Activation
 pole_locks = asyncio.Lock()
 
-# Pydantic models
+# Pydantic Models
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -48,14 +53,14 @@ class PoleControl(BaseModel):
     pole_id: int
     time_sec: int
 
-# Utility functions
-def get_password_hash(password):
+# Utility Functions
+def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-def verify_password(plain_password, hashed_password):
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-def create_access_token(data: dict, expires_delta: datetime.timedelta):
+def create_access_token(data: dict, expires_delta: datetime.timedelta) -> str:
     to_encode = data.copy()
     expire = datetime.datetime.utcnow() + expires_delta
     to_encode.update({"exp": expire})
@@ -81,7 +86,7 @@ async def get_current_user(authorization: Optional[str] = Header(None), token_co
         raise HTTPException(status_code=404, detail="User not found")
     return {"username": user["username"], "name": user["name"], "phone": user["phone"]}
 
-# Authentication routes
+# Authentication Routes
 @app.post("/signup")
 async def signup(user: UserCreate):
     if users_collection.find_one({"username": user.username}):
@@ -113,7 +118,7 @@ async def user_info(user: dict = Depends(get_current_user)):
 async def get_username(user: dict = Depends(get_current_user)):
     return {"username": user["username"]}
 
-# Pole activation logic
+# Pole Activation Logic
 async def deactivate_pole_after_delay(pole_id: int, delay: int):
     await asyncio.sleep(delay)
     async with pole_locks:
