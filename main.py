@@ -6,6 +6,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os, jwt, datetime, asyncio
 from passlib.context import CryptContext
 from typing import Dict, Optional
+import os
+import uvicorn
 
 # Load environment variables
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://Manoj:mcpyR6dp3UMKydQo@pole.1qyxr.mongodb.net/?retryWrites=true&w=majority&appName=Pole")
@@ -154,5 +156,5 @@ async def get_pole_status():
 
 # Run FastAPI App (Missing in your code)
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))  # Render assigns PORT dynamically
+    uvicorn.run(app, host="0.0.0.0", port=port)
